@@ -12,23 +12,24 @@ export default function ScanScreen() {
     const [quantity, setQuantity] = useState('1');
     const [barcode, setBarcode] = useState(null);
     const [isFormVisible, setIsFormVisible] = useState(false);
+    const [isManualEntry, setIsManualEntry] = useState(false);
+    const [manualProductName, setManualProductName] = useState('');
+    const [manualProductDescription, setManualProductDescription] = useState('');
 
     const handleBarCodeScanned = async ({ type, data }) => {
         setBarcode(data);
         try {
             const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${data}?fields=product_name,brands,image_url`);
             const productData = await response.json();
-            if (productData.status === 1) {
+            if (productData.status === 1 && productData.product.product_name) {
                 setProduct(productData.product);
                 setIsFormVisible(true);
             } else {
-                setProduct({ product_name: 'Produit non trouvé' });
-                setIsFormVisible(true);
+                setIsManualEntry(true);
             }
         } catch (error) {
             console.error(error);
-            setProduct({ product_name: 'Erreur lors de la récupération du produit' });
-            setIsFormVisible(true);
+            setIsManualEntry(true);
         }
     };
 
@@ -44,6 +45,28 @@ export default function ScanScreen() {
             Alert.alert('Produit enregistré!');
             setIsFormVisible(false);
             setProduct(null);
+            setQuantity('1');
+            setBarcode(null);
+        } catch (e) {
+            console.error(e);
+            Alert.alert('Erreur', 'Impossible d\'enregistrer le produit.');
+        }
+    };
+
+    const saveManualProduct = async () => {
+        if (!manualProductName || !barcode) return;
+
+        try {
+            const productToSave = {
+                product_name: manualProductName,
+                description: manualProductDescription,
+                quantity: quantity,
+            };
+            await AsyncStorage.setItem(barcode, JSON.stringify(productToSave));
+            Alert.alert('Produit enregistré!');
+            setIsManualEntry(false);
+            setManualProductName('');
+            setManualProductDescription('');
             setQuantity('1');
             setBarcode(null);
         } catch (e) {
@@ -99,6 +122,46 @@ export default function ScanScreen() {
         </View>
     );
 
+    const renderManualEntryForm = () => (
+        <View style={styles.container}>
+            <View style={styles.formContainer}>
+                <Text style={styles.titleText}>Produit non trouvé</Text>
+                <Text style={styles.helperText}>Veuillez saisir les informations manuellement.</Text>
+                <TextInput
+                    style={styles.input}
+                    onChangeText={setManualProductName}
+                    value={manualProductName}
+                    placeholder="Nom du produit"
+                />
+                <TextInput
+                    style={styles.input}
+                    onChangeText={setManualProductDescription}
+                    value={manualProductDescription}
+                    placeholder="Description"
+                />
+                <TextInput
+                    style={styles.input}
+                    onChangeText={setQuantity}
+                    value={quantity}
+                    placeholder="Quantité"
+                    keyboardType="numeric"
+                />
+                <TouchableOpacity style={styles.button} onPress={saveManualProduct}>
+                    <Text style={styles.buttonText}>Enregistrer</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.button, styles.buttonOutline]} onPress={() => {
+                    setIsManualEntry(false);
+                    setManualProductName('');
+                    setManualProductDescription('');
+                    setQuantity('1');
+                    setBarcode(null);
+                }}>
+                    <Text style={styles.buttonOutlineText}>Retour</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
+    );
+
     if (!permission) {
         // Camera permissions are still loading.
         return <View/>;
@@ -112,6 +175,10 @@ export default function ScanScreen() {
                 <Button onPress={requestPermission} title="grant permission"/>
             </ScrollView>
         );
+    }
+
+    if (isManualEntry) {
+        return renderManualEntryForm();
     }
 
     return isFormVisible ? renderForm() : renderScanner();
@@ -145,6 +212,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: Colors.light.text,
         textAlign: 'center',
+        marginBottom: 20,
     },
     formContainer: {
         width: '100%',
