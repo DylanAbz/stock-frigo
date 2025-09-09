@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { ScrollView, Text, TouchableOpacity, View, FlatList, StyleSheet, Image } from "react-native";
+import { Text, TouchableOpacity, View, FlatList, StyleSheet, Image } from "react-native";
 import ActionRapide from "../components/ActionRapide";
 import ItemConsommation from "../components/ItemConsommation";
 import { AntDesign, Entypo } from "@expo/vector-icons";
@@ -48,8 +48,8 @@ export default function HomeScreen() {
         }, [])
     );
 
-    return (
-        <ScrollView style={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 16, paddingLeft: insets.left + 16, paddingRight: insets.right + 16, flex: 1 }}>
+    const renderHeader = () => (
+        <View>
             {/* Header */}
             <View style={styles.headerContainer}>
                 <Text style={styles.helloText}>Bonjour!</Text>
@@ -70,23 +70,31 @@ export default function HomeScreen() {
 
             {/* Liste à consommer bientôt */}
             <Text style={styles.partTitle}>À consommer bientôt</Text>
-            {expiringSoonProducts.length > 0 ? (
-                <FlatList
-                    data={expiringSoonProducts}
-                    keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => (
-                        <ItemConsommation
-                            emoji={<Image source={{ uri: item.image_url }} style={{ width: 40, height: 40, borderRadius: 8 }} defaultSource={require('@/assets/images/icon.png')} />}
-                            name={item.product_name}
-                            expiry={`Expire dans ${item.daysUntilExpiration} jours`}
-                            color={getExpiryColor(item.daysUntilExpiration)}
-                        />
-                    )}
-                />
-            ) : (
-                <Text>Aucun produit bientôt périmé.</Text>
-            )}
-        </ScrollView>
+        </View>
+    );
+
+    return (
+        <View style={{ flex: 1, paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left + 16, paddingRight: insets.right + 16 }}>
+            <FlatList
+                data={expiringSoonProducts}
+                keyExtractor={(item) => item.id}
+                ListHeaderComponent={renderHeader}
+                renderItem={({ item }) => (
+                    <ItemConsommation
+                        emoji={<Image source={{ uri: item.image_url }} style={{ width: 40, height: 40, borderRadius: 8 }} defaultSource={require('@/assets/images/icon.png')} />}
+                        name={item.product_name}
+                        expiry={`Expire dans ${item.daysUntilExpiration} jours`}
+                        color={getExpiryColor(item.daysUntilExpiration)}
+                    />
+                )}
+                ListEmptyComponent={
+                    <View>
+                        {renderHeader()}
+                        <Text>Aucun produit bientôt périmé.</Text>
+                    </View>
+                }
+            />
+        </View>
     );
 }
 
