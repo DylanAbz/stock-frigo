@@ -1,5 +1,4 @@
-- afficher les infos dans l'application
-- enregistrer les infos dans une base de données locale avec async-storage avec l'image
+
 - afficher les produits enregistrés dans la liste de la page stock
 - permettre de modifier les stocks d'un produit
 - permettre de modifier les infos d'un produit
