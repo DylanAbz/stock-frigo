@@ -1,6 +1,5 @@
-
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ScrollView, View, Text, StyleSheet, TouchableOpacity, Alert, Image } from "react-native";
+import {ScrollView, View, Text, StyleSheet, TouchableOpacity, Alert, Image, Modal, TextInput, Button} from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useState } from "react";
@@ -10,6 +9,10 @@ import { Colors } from "@/constants/Colors";
 export default function StockScreen() {
     const insets = useSafeAreaInsets();
     const [products, setProducts] = useState([]);
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [editingProduct, setEditingProduct] = useState(null);
+    const [editedName, setEditedName] = useState('');
+    const [editedDescription, setEditedDescription] = useState('');
 
     const fetchProducts = async () => {
         try {
@@ -64,26 +67,56 @@ export default function StockScreen() {
         }
     };
 
+    const openEditModal = (product) => {
+        setEditingProduct(product);
+        setEditedName(product.product_name);
+        setEditedDescription(product.description || '');
+        setIsModalVisible(true);
+    };
+
+    const handleSaveChanges = async () => {
+        if (!editingProduct) return;
+
+        try {
+            const productJson = await AsyncStorage.getItem(editingProduct.id);
+            if (productJson) {
+                const product = JSON.parse(productJson);
+                product.product_name = editedName;
+                product.description = editedDescription;
+                await AsyncStorage.setItem(editingProduct.id, JSON.stringify(product));
+                setIsModalVisible(false);
+                setEditingProduct(null);
+                fetchProducts();
+            }
+        } catch (e) {
+            console.error(e);
+            Alert.alert('Erreur', 'Impossible de sauvegarder les modifications.');
+        }
+    };
+
+
     const renderItem = ({ item }) => (
-        <View style={styles.itemContainer}>
-            <Image
-                source={{ uri: item.image_url }}
-                style={styles.productImage}
-                defaultSource={require('@/assets/images/icon.png')} // Placeholder image
-            />
-            <View style={styles.itemInfo}>
-                <Text style={styles.itemTitle}>{item.product_name}</Text>
+        <TouchableOpacity onPress={() => openEditModal(item)}>
+            <View style={styles.itemContainer}>
+                <Image
+                    source={{ uri: item.image_url }}
+                    style={styles.productImage}
+                    defaultSource={require('@/assets/images/icon.png')} // Placeholder image
+                />
+                <View style={styles.itemInfo}>
+                    <Text style={styles.itemTitle}>{item.product_name}</Text>
+                </View>
+                <View style={styles.quantityContainer}>
+                    <TouchableOpacity onPress={(e) => {e.stopPropagation(); updateQuantity(item.id, parseInt(item.quantity) - 1)}} style={styles.quantityButton}>
+                        <Text style={styles.quantityButtonText}>-</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.quantityText}>{item.quantity}</Text>
+                    <TouchableOpacity onPress={(e) => {e.stopPropagation(); updateQuantity(item.id, parseInt(item.quantity) + 1)}} style={styles.quantityButton}>
+                        <Text style={styles.quantityButtonText}>+</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
-            <View style={styles.quantityContainer}>
-                <TouchableOpacity onPress={() => updateQuantity(item.id, parseInt(item.quantity) - 1)} style={styles.quantityButton}>
-                    <Text style={styles.quantityButtonText}>-</Text>
-                </TouchableOpacity>
-                <Text style={styles.quantityText}>{item.quantity}</Text>
-                <TouchableOpacity onPress={() => updateQuantity(item.id, parseInt(item.quantity) + 1)} style={styles.quantityButton}>
-                    <Text style={styles.quantityButtonText}>+</Text>
-                </TouchableOpacity>
-            </View>
-        </View>
+        </TouchableOpacity>
     );
 
     return (
@@ -99,6 +132,37 @@ export default function StockScreen() {
                 ListEmptyComponent={<Text style={styles.emptyText}>Votre frigo est vide.</Text>}
                 contentContainerStyle={styles.listContent}
             />
+            <Modal
+                animationType="slide"
+                transparent={true}
+                visible={isModalVisible}
+                onRequestClose={() => {
+                    setIsModalVisible(!isModalVisible);
+                    setEditingProduct(null);
+                }}>
+                <View style={styles.centeredView}>
+                    <View style={styles.modalView}>
+                        <Text style={styles.modalText}>Modifier le produit</Text>
+                        <TextInput
+                            style={styles.input}
+                            onChangeText={setEditedName}
+                            value={editedName}
+                            placeholder="Nom du produit"
+                        />
+                        <TextInput
+                            style={styles.input}
+                            onChangeText={setEditedDescription}
+                            value={editedDescription}
+                            placeholder="Description"
+                            multiline
+                        />
+                        <View style={styles.modalButtons}>
+                            <Button title="Annuler" onPress={() => setIsModalVisible(false)} color="#ff6347" />
+                            <Button title="Sauvegarder" onPress={handleSaveChanges} />
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     )
 }
@@ -169,5 +233,48 @@ const styles = StyleSheet.create({
         marginTop: 50,
         fontSize: 16,
         color: Colors.light.text,
+    },
+    centeredView: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        marginTop: 22
+    },
+    modalView: {
+        margin: 20,
+        backgroundColor: "white",
+        borderRadius: 20,
+        padding: 35,
+        alignItems: "center",
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 5,
+        width: '90%'
+    },
+    modalText: {
+        marginBottom: 15,
+        textAlign: "center",
+        fontSize: 20,
+        fontWeight: 'bold'
+    },
+    input: {
+        height: 50,
+        borderColor: Colors.light.icon,
+        borderWidth: 1,
+        borderRadius: 10,
+        marginBottom: 20,
+        paddingHorizontal: 15,
+        fontSize: 16,
+        width: '100%'
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        width: '100%'
     }
 });
