@@ -1,6 +1,3 @@
-
-- scanner code barre et récupérer infos
-- envoyer une requête à l'API OpenFoodFacts et récupérer les infos
 - afficher les infos dans l'application
 - enregistrer les infos dans une base de données locale avec async-storage avec l'image
 - afficher les produits enregistrés dans la liste de la page stock
