@@ -1,10 +1,11 @@
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import {ScrollView, View, Text, StyleSheet, TouchableOpacity, Alert, Image, Modal, TextInput, Button} from "react-native";
+import {ScrollView, View, Text, StyleSheet, TouchableOpacity, Alert, Image, Modal, TextInput, Button, Platform} from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useState } from "react";
 import { useFocusEffect } from '@react-navigation/native';
 import { Colors } from "@/constants/Colors";
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function StockScreen() {
     const insets = useSafeAreaInsets();
@@ -13,6 +14,9 @@ export default function StockScreen() {
     const [editingProduct, setEditingProduct] = useState(null);
     const [editedName, setEditedName] = useState('');
     const [editedDescription, setEditedDescription] = useState('');
+    const [editedExpirationDate, setEditedExpirationDate] = useState('');
+    const [date, setDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
 
     const fetchProducts = async () => {
         try {
@@ -71,6 +75,8 @@ export default function StockScreen() {
         setEditingProduct(product);
         setEditedName(product.product_name);
         setEditedDescription(product.description || '');
+        setEditedExpirationDate(product.expirationDate || '');
+        setDate(product.expirationDate ? new Date(product.expirationDate) : new Date());
         setIsModalVisible(true);
     };
 
@@ -83,6 +89,7 @@ export default function StockScreen() {
                 const product = JSON.parse(productJson);
                 product.product_name = editedName;
                 product.description = editedDescription;
+                product.expirationDate = editedExpirationDate;
                 await AsyncStorage.setItem(editingProduct.id, JSON.stringify(product));
                 setIsModalVisible(false);
                 setEditingProduct(null);
@@ -94,6 +101,12 @@ export default function StockScreen() {
         }
     };
 
+    const onDateChange = (event, selectedDate) => {
+        const currentDate = selectedDate || date;
+        setShowDatePicker(Platform.OS === 'ios');
+        setDate(currentDate);
+        setEditedExpirationDate(currentDate.toISOString().split('T')[0]);
+    };
 
     const renderItem = ({ item }) => (
         <TouchableOpacity onPress={() => openEditModal(item)}>
@@ -156,6 +169,19 @@ export default function StockScreen() {
                             placeholder="Description"
                             multiline
                         />
+                        <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePickerButton}>
+                            <Text style={styles.datePickerButtonText}>{editedExpirationDate || "Sélectionner une date de péremption"}</Text>
+                        </TouchableOpacity>
+                        {showDatePicker && (
+                            <DateTimePicker
+                                testID="dateTimePicker"
+                                value={date}
+                                mode={'date'}
+                                is24Hour={true}
+                                display="default"
+                                onChange={onDateChange}
+                            />
+                        )}
                         <View style={styles.modalButtons}>
                             <Button title="Annuler" onPress={() => setIsModalVisible(false)} color="#ff6347" />
                             <Button title="Sauvegarder" onPress={handleSaveChanges} />
@@ -271,6 +297,20 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         fontSize: 16,
         width: '100%'
+    },
+    datePickerButton: {
+        height: 50,
+        borderColor: Colors.light.icon,
+        borderWidth: 1,
+        borderRadius: 10,
+        marginBottom: 20,
+        justifyContent: 'center',
+        paddingHorizontal: 15,
+        width: '100%'
+    },
+    datePickerButtonText: {
+        fontSize: 16,
+        color: '#888',
     },
     modalButtons: {
         flexDirection: 'row',

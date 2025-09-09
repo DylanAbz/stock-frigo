@@ -1,2 +1,1 @@
-- afficher sur la page d'accueil les produits bientôt périmés à partir de la base de données locale
 - 

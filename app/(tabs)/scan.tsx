@@ -1,15 +1,19 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useState } from 'react';
-import {Button, ScrollView, StyleSheet, Text, View, TextInput, Image, Alert, TouchableOpacity} from 'react-native';
+import {Button, ScrollView, StyleSheet, Text, View, TextInput, Image, Alert, TouchableOpacity, Platform} from 'react-native';
 import {useSafeAreaInsets} from "react-native-safe-area-context";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors } from '@/constants/Colors';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function ScanScreen() {
     const insets = useSafeAreaInsets();
     const [permission, requestPermission] = useCameraPermissions();
     const [product, setProduct] = useState(null);
     const [quantity, setQuantity] = useState('1');
+    const [date, setDate] = useState(new Date());
+    const [showDatePicker, setShowDatePicker] = useState(false);
+    const [expirationDate, setExpirationDate] = useState('');
     const [barcode, setBarcode] = useState(null);
     const [isFormVisible, setIsFormVisible] = useState(false);
     const [isManualEntry, setIsManualEntry] = useState(false);
@@ -40,12 +44,15 @@ export default function ScanScreen() {
             const productToSave = {
                 ...product,
                 quantity: quantity,
+                expirationDate: expirationDate,
             };
             await AsyncStorage.setItem(barcode, JSON.stringify(productToSave));
             Alert.alert('Produit enregistré!');
             setIsFormVisible(false);
             setProduct(null);
             setQuantity('1');
+            setExpirationDate('');
+            setDate(new Date());
             setBarcode(null);
         } catch (e) {
             console.error(e);
@@ -61,6 +68,7 @@ export default function ScanScreen() {
                 product_name: manualProductName,
                 description: manualProductDescription,
                 quantity: quantity,
+                expirationDate: expirationDate,
             };
             await AsyncStorage.setItem(barcode, JSON.stringify(productToSave));
             Alert.alert('Produit enregistré!');
@@ -68,11 +76,20 @@ export default function ScanScreen() {
             setManualProductName('');
             setManualProductDescription('');
             setQuantity('1');
+            setExpirationDate('');
+            setDate(new Date());
             setBarcode(null);
         } catch (e) {
             console.error(e);
             Alert.alert('Erreur', 'Impossible d\'enregistrer le produit.');
         }
+    };
+
+    const onDateChange = (event, selectedDate) => {
+        const currentDate = selectedDate || date;
+        setShowDatePicker(Platform.OS === 'ios');
+        setDate(currentDate);
+        setExpirationDate(currentDate.toISOString().split('T')[0]);
     };
 
     const renderScanner = () => (
@@ -104,6 +121,19 @@ export default function ScanScreen() {
                         placeholder="Quantité"
                         keyboardType="numeric"
                     />
+                    <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePickerButton}>
+                        <Text style={styles.datePickerButtonText}>{expirationDate || "Sélectionner une date de péremption"}</Text>
+                    </TouchableOpacity>
+                    {showDatePicker && (
+                        <DateTimePicker
+                            testID="dateTimePicker"
+                            value={date}
+                            mode={'date'}
+                            is24Hour={true}
+                            display="default"
+                            onChange={onDateChange}
+                        />
+                    )}
                     <TouchableOpacity style={styles.button} onPress={saveProduct}>
                         <Text style={styles.buttonText}>Valider</Text>
                     </TouchableOpacity>
@@ -111,6 +141,8 @@ export default function ScanScreen() {
                         setIsFormVisible(false);
                         setProduct(null);
                         setQuantity('1');
+                        setExpirationDate('');
+                        setDate(new Date());
                         setBarcode(null);
                     }}>
                         <Text style={styles.buttonOutlineText}>Retour</Text>
@@ -146,6 +178,19 @@ export default function ScanScreen() {
                     placeholder="Quantité"
                     keyboardType="numeric"
                 />
+                <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.datePickerButton}>
+                    <Text style={styles.datePickerButtonText}>{expirationDate || "Sélectionner une date de péremption"}</Text>
+                </TouchableOpacity>
+                {showDatePicker && (
+                    <DateTimePicker
+                        testID="dateTimePicker"
+                        value={date}
+                        mode={'date'}
+                        is24Hour={true}
+                        display="default"
+                        onChange={onDateChange}
+                    />
+                )}
                 <TouchableOpacity style={styles.button} onPress={saveManualProduct}>
                     <Text style={styles.buttonText}>Enregistrer</Text>
                 </TouchableOpacity>
@@ -154,6 +199,8 @@ export default function ScanScreen() {
                     setManualProductName('');
                     setManualProductDescription('');
                     setQuantity('1');
+                    setExpirationDate('');
+                    setDate(new Date());
                     setBarcode(null);
                 }}>
                     <Text style={styles.buttonOutlineText}>Retour</Text>
@@ -250,6 +297,19 @@ const styles = StyleSheet.create({
         marginBottom: 20,
         paddingHorizontal: 15,
         fontSize: 16,
+    },
+    datePickerButton: {
+        height: 50,
+        borderColor: Colors.light.icon,
+        borderWidth: 1,
+        borderRadius: 10,
+        marginBottom: 20,
+        justifyContent: 'center',
+        paddingHorizontal: 15,
+    },
+    datePickerButtonText: {
+        fontSize: 16,
+        color: '#888',
     },
     button: {
         backgroundColor: Colors.light.tint,
